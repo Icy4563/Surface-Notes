@@ -170,6 +170,8 @@ class NotesApp(MDApp):
                  f.write(currenttext)
                  f.close()
 
+            currenttext += "saved successfully"
+
         elif not currenttext.find("//overwrite") == -1:
             print("saving")
             currenttext = currenttext[:-12]
@@ -182,13 +184,18 @@ class NotesApp(MDApp):
                  f.write(currenttext)
                  f.close()
 
+            currenttext += "saved successfully"
+
         elif not currenttext.find("//open") == -1:
             print("opening")
             currenttext = currenttext[:-6]
 
-            with open("SurfaceNotes.txt") as f:
-                 currenttext = f.read()
-                 f.close()
+            try:
+                with open("SurfaceNotes.txt") as f:
+                    currenttext = f.read()
+                    f.close()
+            except FileNotFoundError:
+                 currenttext += "no saved notes"
 
         elif not currenttext.find("//help") == -1:
             print("opening")
