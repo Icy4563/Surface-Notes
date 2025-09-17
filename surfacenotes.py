@@ -14,6 +14,7 @@ from kivymd.icon_definitions import md_icons
 import sys
 
 currenttext = ""
+name = None
 
 KV = """
 
@@ -111,7 +112,7 @@ class NotesApp(MDApp):
         return self.kv
     
     def keyHandler(self, window, key, scancode, codepoint, modifier):
-        global currenttext
+        global currenttext, name
         self.kv.get_screen("EditorScreen").ids.textbox.text_color = "white"
         print("key", key)
         if isinstance(codepoint, str):
@@ -151,57 +152,118 @@ class NotesApp(MDApp):
                 print("removed", currenttext)
 
         if isinstance(key, int):
-             if key == 13:
-                  currenttext += "\n"
+            if key == 13:
+                currenttext += "\n"
+
+                if not currenttext.find("//name=") == -1:
+                     base = currenttext.find("//name=") + 7
+                     end = len(currenttext)
+
+                     name = currenttext[base:end]
+                     name = name[:-1]
+
+                     namespace = len(name) + 8
+
+                     currenttext = currenttext[:-namespace]
+                     currenttext += f"name set to {name}"
+
+                if not currenttext.find("//save") == -1:
+                    if not name:
+                        print("saving")
+                        currenttext = currenttext[:-7]
+
+                        with open("SurfaceNotes.txt", "a") as f:
+                            currentdate = date.today()
+                            currenttime = time.strftime("%H:%M")
+                            timestuff = f"================{currentdate}, {currenttime}================\n\n"
+                            f.write(timestuff)
+                            f.write(currenttext)
+                            f.close()
+
+                        currenttext += "saved successfully"
+
+                    else:
+                        print("saving")
+                        currenttext = currenttext[:-7]
+                        pseudoname = f"{name}.txt"
+
+                        with open(pseudoname, "a") as f:
+                            currentdate = date.today()
+                            currenttime = time.strftime("%H:%M")
+                            timestuff = f"================{currentdate}, {currenttime}================\n\n"
+                            f.write(timestuff)
+                            f.write(currenttext)
+                            f.close()
+
+                        currenttext += f"saved successfully as {pseudoname}"
+
+                elif not currenttext.find("//overwrite") == -1:
+                    if not name:
+                        print("saving")
+                        currenttext = currenttext[:-12]
+
+                        with open("SurfaceNotes.txt", "w") as f:
+                            currentdate = date.today()
+                            currenttime = time.strftime("%H:%M")
+                            timestuff = f"================{currentdate}, {currenttime}================\n\n"
+                            f.write(timestuff)
+                            f.write(currenttext)
+                            f.close()
+
+                        currenttext += "overwritten successfully"
+
+                    else:
+                        print("saving")
+                        currenttext = currenttext[:-6]
+                        pseudoname = f"{name}.txt"
+
+                        with open(pseudoname, "w") as f:
+                            currentdate = date.today()
+                            currenttime = time.strftime("%H:%M")
+                            timestuff = f"================{currentdate}, {currenttime}================\n\n"
+                            f.write(timestuff)
+                            f.write(currenttext)
+                            f.close()
+
+                        currenttext += f"overwritten successfully as {pseudoname}"
+
+                elif not currenttext.find("//open") == -1:
+                    if not name:
+                        print("opening")
+                        currenttext = currenttext[:-6]
+
+                        try:
+                            with open("SurfaceNotes.txt") as f:
+                                currenttext = f.read()
+                                f.close()
+                        except FileNotFoundError:
+                            currenttext += "no saved notes"
+
+                    else:
+                        print("opening")
+                        currenttext = currenttext[:-6]
+
+                        pseudoname = f"{name}.txt"
+
+                        try:
+                            with open(pseudoname) as f:
+                                currenttext = f.read()
+                                f.close()
+                        except FileNotFoundError:
+                            currenttext += "no saved notes"
+
+                elif not currenttext.find("//clear") == -1:
+                    currenttext = ""
 
         if len(currenttext) >= 0:
             currenttext = str(currenttext)
             self.kv.get_screen("EditorScreen").ids.textbox.text = currenttext
 
-        if not currenttext.find("//save") == -1:
-            print("saving")
-            currenttext = currenttext[:-6]
-
-            with open("SurfaceNotes.txt", "a") as f:
-                 currentdate = date.today()
-                 currenttime = time.strftime("%H:%M")
-                 timestuff = f"================{currentdate}, {currenttime}================\n\n"
-                 f.write(timestuff)
-                 f.write(currenttext)
-                 f.close()
-
-            currenttext += "saved successfully"
-
-        elif not currenttext.find("//overwrite") == -1:
-            print("saving")
-            currenttext = currenttext[:-12]
-
-            with open("SurfaceNotes.txt", "w") as f:
-                 currentdate = date.today()
-                 currenttime = time.strftime("%H:%M")
-                 timestuff = f"================{currentdate}, {currenttime}================\n\n"
-                 f.write(timestuff)
-                 f.write(currenttext)
-                 f.close()
-
-            currenttext += "saved successfully"
-
-        elif not currenttext.find("//open") == -1:
+        if not currenttext.find("//help") == -1:
             print("opening")
-            currenttext = currenttext[:-6]
-
-            try:
-                with open("SurfaceNotes.txt") as f:
-                    currenttext = f.read()
-                    f.close()
-            except FileNotFoundError:
-                 currenttext += "no saved notes"
-
-        elif not currenttext.find("//help") == -1:
-            print("opening")
-            currenthelptext = ">type '//help' to access this menu\n\n>type '//save' to save your notes. It will save to 'SurfaceNotes.txt' in the same folder as this app. Any new notes will be saved in the same file\n\n>type '//open' to open and read the saved notes.\n\n>Note: use '//overwrite' to overwrite the save file instead of continuing to it"
+            currenthelptext = ">type '//help' to access this menu\n\n>type '//save' to save your notes. It will save to 'SurfaceNotes.txt' in the same folder as this app. Any new notes will be saved in the same file\n\n>type '//open' to open and read the saved notes.\n\n>Note: use '//overwrite' to overwrite the default save file instead of continuing to it\n\n>Note: use '//name=' to name your file. You need to do this before saving or opening. You can also use this command to open a specific file. Names cannot contain '.txt' or spaces\n\n>Note: press 'esc' to exit Surface Notes"
             self.kv.get_screen("EditorScreen").ids.textbox.text = currenthelptext
-            currenttext = ""
+
 
         else:
             pass
