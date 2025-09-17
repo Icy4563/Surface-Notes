@@ -1,12 +1,12 @@
 A simple KivyMD app for taking short notes in a minimal, focused environment. Has basic save and read features.
 
 # features:
- >> A quick save and custom save file saving system
- >> basic file read system
+ ** A quick save and custom save file saving system
+ ** basic file read system
 
 ==upcoming features==:
-  >> basic notification widget for command confirmations
-  >> basic clock
+  ** basic notification widget for command confirmations
+  ** basic clock
 
 ========================
 # Changelog:
