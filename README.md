@@ -6,9 +6,9 @@ A simple KivyMD app for taking short notes in a minimal, focused environment. Ha
  
  ** basic file read system
 
-==upcoming features==:
+# ==upcoming features==:
 
-  ** basic notification widget for command confirmations
+  ** basic notification widget for command confirmations [added in v1.2]
   
   ** basic clock
 
