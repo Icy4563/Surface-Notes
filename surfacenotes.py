@@ -175,7 +175,7 @@ class NotesApp(MDApp):
             return "ok"
 
     def save_name(self):
-        global nam, currenttext
+        global name, currenttext
         print("saving name")
 
         base = currenttext.find("//name=") + 7
