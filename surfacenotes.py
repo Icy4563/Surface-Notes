@@ -12,6 +12,12 @@ import time
 import os
 from kivymd.icon_definitions import md_icons
 import sys
+from string import Template
+
+illegal_names = ["CON", "PRN", "AUX", "NUL", "COM1", 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9']
+
+illegal_chars = ['<', '>', ':', '''"''', '/', '|'
+                 '?', '*', "\\"]
 
 currenttext = ""
 name = None
@@ -51,7 +57,44 @@ ScreenManager:
                     text_size: (self.width, None)
                     padding: "5sp", "5sp", 0, 0
 
+        MDLabel:
+            text: ""
+            font_style: 'IBM'
+            role: "medium"
+            id: notificationbox
+            size_hint_x: 0.185
+            pos_hint: {'center_x': 0.865,'center_y': 0.815}
+            theme_text_color: "Custom"
+            text_color: 0.5424, 0.5706, 0.5837, 1
+            adaptive_height: True
+            halign: "center"
+            valign: "center"
+            padding: "5sp", "5sp", 0, 0
+            opacity: 0
+            
+            on_text:
+                self.opacity = 0.0
+                from kivy.animation import Animation
+                animations = (
+                Animation(opacity=1, duration=0.65)
+                + Animation(duration=1.15)
+                + Animation(opacity=0, duration=0.65, t="out_quad")
+                )
 
+                animations.start(self)
+
+        MDCard:
+            style: "filled"
+            pos_hint: {'center_x': 0.865,'center_y': 0.815}
+            theme_bg_color: "Custom"
+            size_hint_x: notificationbox.size_hint_x
+            size_hint_y: 0.3
+            md_bg_color: 0.4224, 0.449, 0.4636, 0.375
+            radius: [dp(18), dp(18), dp(18), dp(18)]
+            opacity: notificationbox.opacity
+
+
+                    
 """
 def getMyFilePaths(relativePath):
     try:
@@ -60,7 +103,6 @@ def getMyFilePaths(relativePath):
         temp = os.path.abspath(".")
 
     return os.path.join(temp, relativePath)
-
 
 def getBlur(pilImage, **kwargs):
     pilImage = pilImage.filter(ImageFilter.GaussianBlur(6))
@@ -92,7 +134,7 @@ class NotesApp(MDApp):
             "medium": {
                 "line-height": 1.42,
                 "font-name": "IBM",
-                "font-size": sp(45),
+                "font-size": sp(30),
             },
             "small": {
                 "line-height": .9,
@@ -111,20 +153,67 @@ class NotesApp(MDApp):
 
         return self.kv
     
+    def check_name(self, nameIO):
+        global illegal_chars, illegal_names
+        windowsIlegalFile = False
+        windowsIlegalCharacter = False
+
+        #check for general windows illegal file names
+        if any(var in nameIO.upper() for var in illegal_names):
+            windowsIlegalFile = True
+        else:
+            #if no windows illegal file names are detected, check for illegal characters
+            windowsIlegalFile = False
+
+            if any(var in nameIO.upper() for var in illegal_chars):
+                windowsIlegalCharacter = True
+
+        if windowsIlegalFile or windowsIlegalCharacter:
+            return "forbidden name or character, please edit your name and try again"
+        
+        else:
+            return "ok"
+
+    def save_name(self):
+        global nam, currenttext
+        print("saving name")
+
+        base = currenttext.find("//name=") + 7
+        end = len(currenttext)
+
+        name = currenttext[base:end]
+        name = name[:-1]
+
+        namespace = len(name) + 8
+        currenttext = currenttext[:-namespace]
+
+        if not self.check_name(name) == "ok":
+            msg = self.check_name(name)
+            name = None
+            notification = Template("$message")
+            notification = notification.substitute(message=msg)
+
+        elif self.check_name(name) == "ok":
+            msg = name
+            notification = Template("name set to $message")
+            notification = notification.substitute(message=msg)
+
+        self.kv.get_screen("EditorScreen").ids.notificationbox.text = notification
+
     def keyHandler(self, window, key, scancode, codepoint, modifier):
         global currenttext, name
         self.kv.get_screen("EditorScreen").ids.textbox.text_color = "white"
-        print("key", key)
         if isinstance(codepoint, str):
                 if key == 301:
                      codepoint = ""
                 if key == 304:
                      codepoint = ""
+                if key == 309:
+                    codepoint = ""
                 if modifier == ['shift']:
-                    print("shifting")
                     if key == 47:
                           codepoint = "?"
-                    elif key == 32:
+                    elif key == 59:
                           codepoint = ":"
                     elif key == 49:
                           codepoint = "!"
@@ -142,30 +231,19 @@ class NotesApp(MDApp):
                     else:
                         codepoint = codepoint.upper()
                 elif modifier == ['capslock']:
-                    print("shifting")
                     codepoint = codepoint.upper()
                 currenttext += codepoint
 
         if isinstance(key, int):
              if key == 8:
                 currenttext = currenttext[:-1]
-                print("removed", currenttext)
 
         if isinstance(key, int):
             if key == 13:
                 currenttext += "\n"
 
                 if not currenttext.find("//name=") == -1:
-                     base = currenttext.find("//name=") + 7
-                     end = len(currenttext)
-
-                     name = currenttext[base:end]
-                     name = name[:-1]
-
-                     namespace = len(name) + 8
-
-                     currenttext = currenttext[:-namespace]
-                     currenttext += f"name set to {name}"
+                    self.save_name()
 
                 if not currenttext.find("//save") == -1:
                     if not name:
@@ -180,7 +258,7 @@ class NotesApp(MDApp):
                             f.write(currenttext)
                             f.close()
 
-                        currenttext += "saved successfully"
+                        self.kv.get_screen("EditorScreen").ids.notificationbox.text = "saved succesfully"
 
                     else:
                         print("saving")
@@ -195,7 +273,9 @@ class NotesApp(MDApp):
                             f.write(currenttext)
                             f.close()
 
-                        currenttext += f"saved successfully as {pseudoname}"
+                        notification1 = Template("saved succesfully as $namename")
+                        notification1 = notification1.substitute(namename=pseudoname)
+                        self.kv.get_screen("EditorScreen").ids.notificationbox.text = notification1
 
                 elif not currenttext.find("//overwrite") == -1:
                     if not name:
@@ -210,22 +290,39 @@ class NotesApp(MDApp):
                             f.write(currenttext)
                             f.close()
 
-                        currenttext += "overwritten successfully"
+                        self.kv.get_screen("EditorScreen").ids.notificationbox.text = "overwritten succesfully"
 
                     else:
+                        continueWriting = True
                         print("saving")
-                        currenttext = currenttext[:-6]
-                        pseudoname = f"{name}.txt"
+                        currenttext = currenttext[:-12]
+                        currenttext = currenttext.splitlines()
+                        try:
+                            if not currenttext[0].find("================") == -1:
+                                del currenttext[0]
+                                currenttext = "\n".join(currenttext)
+                            else:
+                                currenttext = "\n".join(currenttext)
+                        except IndexError:
+                            self.kv.get_screen("EditorScreen").ids.notificationbox.text = "can't overwrite with an empty note"
+                            continueWriting = False
 
-                        with open(pseudoname, "w") as f:
-                            currentdate = date.today()
-                            currenttime = time.strftime("%H:%M")
-                            timestuff = f"================{currentdate}, {currenttime}================\n\n"
-                            f.write(timestuff)
-                            f.write(currenttext)
-                            f.close()
+                        if continueWriting:
 
-                        currenttext += f"overwritten successfully as {pseudoname}"
+                            pseudoname = f"{name}.txt"
+
+                            with open(pseudoname, "w") as f:
+                                currentdate = date.today()
+                                currenttime = time.strftime("%H:%M")
+                                timestuff = f"================{currentdate}, {currenttime}================\n\n"
+                                f.write(timestuff)
+                                f.write(currenttext)
+                                f.close()
+
+                            notification2 = Template("overwritten succesfully as $namename")
+                            notification2 = notification2.substitute(namename=pseudoname)
+
+                            self.kv.get_screen("EditorScreen").ids.notificationbox.text = notification2
 
                 elif not currenttext.find("//open") == -1:
                     if not name:
@@ -237,12 +334,11 @@ class NotesApp(MDApp):
                                 currenttext = f.read()
                                 f.close()
                         except FileNotFoundError:
-                            currenttext += "no saved notes"
+                            self.kv.get_screen("EditorScreen").ids.notificationbox.text = f"no notes saved to default file"
 
                     else:
                         print("opening")
                         currenttext = currenttext[:-6]
-
                         pseudoname = f"{name}.txt"
 
                         try:
@@ -250,21 +346,29 @@ class NotesApp(MDApp):
                                 currenttext = f.read()
                                 f.close()
                         except FileNotFoundError:
-                            currenttext += "no saved notes"
+                            notification3 = Template("no notes saved to $namename")
+                            notification3 = notification3.substitute(namename=pseudoname)
+
+                            self.kv.get_screen("EditorScreen").ids.notificationbox.text = notification3
 
                 elif not currenttext.find("//clear") == -1:
                     currenttext = ""
 
         if len(currenttext) >= 0:
-            currenttext = str(currenttext)
-            self.kv.get_screen("EditorScreen").ids.textbox.text = currenttext
+            if len(currenttext) == 0:
+                self.kv.get_screen("EditorScreen").ids.textbox.text = '''start typing, type '//help' for commands'''
+                self.kv.get_screen("EditorScreen").ids.textbox.text_color = "gray"
 
-        if not currenttext.find("//help") == -1:
-            print("opening")
-            currenthelptext = ">type '//help' to access this menu\n\n>type '//save' to save your notes. It will save to 'SurfaceNotes.txt' in the same folder as this app. Any new notes will be saved in the same file\n\n>type '//open' to open and read the saved notes.\n\n>Note: use '//overwrite' to overwrite the default save file instead of continuing to it\n\n>Note: use '//name=' to name your file. You need to do this before saving or opening. You can also use this command to open a specific file. Names cannot contain '.txt' or spaces\n\n>Note: press 'esc' to exit Surface Notes"
-            self.kv.get_screen("EditorScreen").ids.textbox.text = currenthelptext
+            else:
+                currenttext = str(currenttext)
+                self.kv.get_screen("EditorScreen").ids.textbox.text = currenttext
 
-
+        if isinstance(currenttext, str):
+            if not currenttext.find("//help") == -1:
+                currenthelptext = ">type '//help' to access this menu\n\n>type '//save' to save your notes. It will save to 'SurfaceNotes.txt' in the same folder as this app. Any new notes will be saved in the same file\n\n>type '//open' to open and read the saved notes.\n\n>Note: use '//overwrite' to overwrite the default save file instead of continuing to it\n\n>Note: use '//name=' to name your file. You need to do this before saving or opening. You can also use this command to open a specific file. Names cannot contain '.txt' or spaces\n\n>Note: press 'esc' to exit Surface Notes"
+                self.kv.get_screen("EditorScreen").ids.textbox.text = currenthelptext
+            else:
+                pass
         else:
             pass
 
