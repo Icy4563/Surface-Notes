@@ -13,6 +13,8 @@ import os
 from kivymd.icon_definitions import md_icons
 import sys
 from string import Template
+import glob
+from kivy.clock import Clock
 
 illegal_names = ["CON", "PRN", "AUX", "NUL", "COM1", 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9']
 
@@ -21,6 +23,7 @@ illegal_chars = ['<', '>', ':', '''"''', '/', '|'
 
 currenttext = ""
 name = None
+engaged = False
 
 KV = """
 
@@ -32,70 +35,90 @@ ScreenManager:
     md_bg_color: 0, 0, 0, 0
 
     MDFloatLayout:
-        MDFloatLayout:
-            id: layout
+        id: layout
 
-        MDScrollView:
-            do_scroll_x: False
-            do_scroll_y: True
+    MDScrollView:
+        do_scroll_x: False
+        do_scroll_y: True
 
-            MDBoxLayout:
-                adaptive_height: True
+        MDBoxLayout:
+            adaptive_height: True
 
-                MDLabel:
-                    text: "start typing, type '//help' for commands"
-                    font_style: 'IBM'
-                    role: "small"
-                    id: textbox
-                    size_hint_y: None
-                    height: self.texture_size[1]
-                    pos_hint: {'center_x': 0.5,'center_y': 0.5}
-                    theme_text_color: "Custom"
-                    text_color: "gray"
-                    valign: "top"
-                    halign: "left"
-                    text_size: (self.width, None)
-                    padding: "5sp", "5sp", 0, 0
+            MDLabel:
+                text: "start typing, type '//help' for commands"
+                font_style: 'IBM'
+                role: "small"
+                id: textbox
+                size_hint_y: None
+                height: self.texture_size[1]
+                pos_hint: {'center_x': 0.5,'center_y': 0.5}
+                theme_text_color: "Custom"
+                text_color: "gray"
+                valign: "top"
+                halign: "left"
+                text_size: (self.width, None)
+                padding: "5sp", "5sp", 0, 0
+
+    MDFloatLayout:
 
         MDLabel:
             text: ""
             font_style: 'IBM'
             role: "medium"
             id: notificationbox
-            size_hint_x: 0.185
+            size_hint: None, None
+            width: dp(275)
+            text_size: self.width, None
             pos_hint: {'center_x': 0.865,'center_y': 0.815}
             theme_text_color: "Custom"
             text_color: 0.5424, 0.5706, 0.5837, 1
-            adaptive_height: True
             halign: "center"
             valign: "center"
-            padding: "5sp", "5sp", 0, 0
+            padding: dp(10), dp(10)
             opacity: 0
             
             on_text:
                 self.opacity = 0.0
                 from kivy.animation import Animation
                 animations = (
-                Animation(opacity=1, duration=0.65)
+                Animation(opacity=1.375, duration=0.65)
                 + Animation(duration=1.15)
                 + Animation(opacity=0, duration=0.65, t="out_quad")
                 )
 
                 animations.start(self)
+            on_texture_size:
+                self.height = self.texture_size[1] + dp(6)
+                notificationbg.size = (self.width + dp(20), self.height + dp(20))
 
         MDCard:
-            style: "filled"
+            style: "outlined"
             pos_hint: {'center_x': 0.865,'center_y': 0.815}
             theme_bg_color: "Custom"
-            size_hint_x: notificationbox.size_hint_x
-            size_hint_y: 0.3
+            id: notificationbg
+            size_hint: None, None
             md_bg_color: 0.4224, 0.449, 0.4636, 0.375
             radius: [dp(18), dp(18), dp(18), dp(18)]
             opacity: notificationbox.opacity
+            size: notificationbox.size
+
+        MDLabel:
+            text: ""
+            font_style: "IBM"
+            role: "small"
+            theme_text_color: "Custom"
+            text_color: "white"
+            size_hint: 0.3, 0.3
+            halign: "center"
+            valign: "center"
+            opacity: 0.0
+            pos_hint: {'center_x': 0.9765,'center_y': 0.99}
+            id: time_label
 
 
                     
 """
+
 def getMyFilePaths(relativePath):
     try:
         temp = sys._MEIPASS
@@ -103,6 +126,18 @@ def getMyFilePaths(relativePath):
         temp = os.path.abspath(".")
 
     return os.path.join(temp, relativePath)
+
+def scanForFiles():
+    extension = "*.txt"
+
+    txt_files = glob.glob(extension)
+
+    str_list = ""
+    for n in txt_files:
+        str_list += "\n"
+        str_list += n
+
+    return str_list
 
 def getBlur(pilImage, **kwargs):
     pilImage = pilImage.filter(ImageFilter.GaussianBlur(6))
@@ -120,7 +155,24 @@ def getBlur(pilImage, **kwargs):
     newimg = FitImage(texture=kivyTexture, **kwargs)
     return newimg
 
+
 class NotesApp(MDApp):
+
+    def clock_function(self, dt):
+        global engaged
+        def run_clock():
+            self.kv.get_screen("EditorScreen").ids.time_label.opacity = 0.9
+            time_storage = time.strftime("%H:%M")
+            self.kv.get_screen("EditorScreen").ids.time_label.text = str(time_storage)
+
+        def clock_disabled():
+            self.kv.get_screen("EditorScreen").ids.time_label.opacity = 0.0
+
+        if engaged:
+            run_clock()
+        else:
+            clock_disabled()
+
     def build(self):
         global shot
         LabelBase.register(name="IBM", fn_regular=getMyFilePaths("IBMPlexMono.ttf"))
@@ -151,8 +203,9 @@ class NotesApp(MDApp):
         self.kv.get_screen("EditorScreen").ids.layout.add_widget(shot)
         Window.bind(on_key_down=self.keyHandler)
 
+        Clock.schedule_interval(self.clock_function, 1)
         return self.kv
-    
+
     def check_name(self, nameIO):
         global illegal_chars, illegal_names
         windowsIlegalFile = False
@@ -201,7 +254,7 @@ class NotesApp(MDApp):
         self.kv.get_screen("EditorScreen").ids.notificationbox.text = notification
 
     def keyHandler(self, window, key, scancode, codepoint, modifier):
-        global currenttext, name
+        global currenttext, name, engaged
         self.kv.get_screen("EditorScreen").ids.textbox.text_color = "white"
         if isinstance(codepoint, str):
                 if key == 301:
@@ -244,6 +297,17 @@ class NotesApp(MDApp):
 
                 if not currenttext.find("//name=") == -1:
                     self.save_name()
+
+                if not currenttext.find("//clock") == -1:
+                    currenttext = currenttext[:-8]
+                    if engaged:
+                        engaged = False
+                    else:
+                        engaged = True
+
+                if not currenttext.find("//scan") == -1:
+                    currenttext = currenttext[:-7]
+                    currenttext += scanForFiles()
 
                 if not currenttext.find("//save") == -1:
                     if not name:
