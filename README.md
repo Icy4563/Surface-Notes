@@ -14,6 +14,9 @@ A simple KivyMD app for taking short notes in a minimal, focused environment. Ha
 
 # Changelog:
 
+# 1.3.1:
+fixed bug where the main text editor would cover up the notification pop-up, added ctrl+v pasting support, fixed the //help menu for new features
+
 # 1.3:
 added a more robust notification system, a simple clock and a file scanner, to check for existing .txt files in the same folder
 (use "//clock" or "//scan")
