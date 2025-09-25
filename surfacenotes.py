@@ -15,6 +15,7 @@ import sys
 from string import Template
 import glob
 from kivy.clock import Clock
+from kivy.core.clipboard import Clipboard
 
 illegal_names = ["CON", "PRN", "AUX", "NUL", "COM1", 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9']
 
@@ -35,29 +36,31 @@ ScreenManager:
     md_bg_color: 0, 0, 0, 0
 
     MDFloatLayout:
-        id: layout
 
-    MDScrollView:
-        do_scroll_x: False
-        do_scroll_y: True
+        MDFloatLayout:
+            id: layout
 
-        MDBoxLayout:
-            adaptive_height: True
+        MDScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
 
-            MDLabel:
-                text: "start typing, type '//help' for commands"
-                font_style: 'IBM'
-                role: "small"
-                id: textbox
-                size_hint_y: None
-                height: self.texture_size[1]
-                pos_hint: {'center_x': 0.5,'center_y': 0.5}
-                theme_text_color: "Custom"
-                text_color: "gray"
-                valign: "top"
-                halign: "left"
-                text_size: (self.width, None)
-                padding: "5sp", "5sp", 0, 0
+            MDBoxLayout:
+                adaptive_height: True
+
+                MDLabel:
+                    text: "start typing, type '//help' for commands"
+                    font_style: 'IBM'
+                    role: "small"
+                    id: textbox
+                    size_hint_y: None
+                    height: self.texture_size[1]
+                    pos_hint: {'center_x': 0.5,'center_y': 0.5}
+                    theme_text_color: "Custom"
+                    text_color: "gray"
+                    valign: "top"
+                    halign: "left"
+                    text_size: (self.width, None)
+                    padding: "5sp", "5sp", 0, 0
 
     MDFloatLayout:
 
@@ -81,7 +84,7 @@ ScreenManager:
                 self.opacity = 0.0
                 from kivy.animation import Animation
                 animations = (
-                Animation(opacity=1.375, duration=0.65)
+                Animation(opacity=1.485, duration=0.65)
                 + Animation(duration=1.15)
                 + Animation(opacity=0, duration=0.65, t="out_quad")
                 )
@@ -263,6 +266,8 @@ class NotesApp(MDApp):
                      codepoint = ""
                 if key == 309:
                     codepoint = ""
+                if key == 305:
+                    codepoint = ""
                 if modifier == ['shift']:
                     if key == 47:
                           codepoint = "?"
@@ -287,6 +292,13 @@ class NotesApp(MDApp):
                     codepoint = codepoint.upper()
                 currenttext += codepoint
 
+        if codepoint == "v" and modifier == ['ctrl']:
+            currenttext = currenttext[:-1]
+            codepoint = ""
+            paste = Clipboard.paste()
+            currenttext += paste
+            del paste
+                
         if isinstance(key, int):
              if key == 8:
                 currenttext = currenttext[:-1]
@@ -429,7 +441,7 @@ class NotesApp(MDApp):
 
         if isinstance(currenttext, str):
             if not currenttext.find("//help") == -1:
-                currenthelptext = ">type '//help' to access this menu\n\n>type '//save' to save your notes. It will save to 'SurfaceNotes.txt' in the same folder as this app. Any new notes will be saved in the same file\n\n>type '//open' to open and read the saved notes.\n\n>Note: use '//overwrite' to overwrite the default save file instead of continuing to it\n\n>Note: use '//name=' to name your file. You need to do this before saving or opening. You can also use this command to open a specific file. Names cannot contain '.txt' or spaces\n\n>Note: press 'esc' to exit Surface Notes"
+                currenthelptext = ">type '//help' to access this menu\n\n>type '//save' to save your notes. It will save to 'SurfaceNotes.txt' in the same folder as this app. Any new notes will be saved in the same file\n\n>type '//open' to open and read the saved notes.\n\n>type '//clear' to clear all typed text.\n\n>type '//scan' to show .txt files in the executable's directory\n\n>type '//clock' to toggle a minimal clock.\n\n===========\n\n>Note: use '//overwrite' to overwrite the default save file instead of continuing to it\n\n>Note: use '//name=' to name your file. You need to do this before saving or opening. You can also use this command to open a specific file. Names cannot contain '.txt' or spaces (among other illegal file names)\n\n>Note: press 'esc' to exit Surface Notes"
                 self.kv.get_screen("EditorScreen").ids.textbox.text = currenthelptext
             else:
                 pass
